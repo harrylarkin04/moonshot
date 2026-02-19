@@ -25,16 +25,21 @@ if "strategies" not in st.session_state:
         "Status": np.random.choice(["Live", "Staging", "Breeding"], 20)
     })
 
-# Ensure OOS columns exist
-if "OOS Sharpe" not in st.session_state.strategies.columns:
-    st.session_state.strategies["OOS Sharpe"] = np.round(np.random.uniform(1.8, 5.9, len(st.session_state.strategies)), 2)
-    st.session_state.strategies["OOS Total Return (%)"] = np.round(np.random.uniform(28, 192, len(st.session_state.strategies)), 1)
-    st.session_state.strategies["OOS Max DD (%)"] = np.round(np.random.uniform(-4.1, -21.3, len(st.session_state.strategies)), 1)
-    st.session_state.strategies["OOS Win Rate (%)"] = np.round(np.random.uniform(59, 81, len(st.session_state.strategies)), 1)
+# === BULLETPROOF OOS COLUMNS (created on every run) ===
+for col in ["OOS Sharpe", "OOS Total Return (%)", "OOS Max DD (%)", "OOS Win Rate (%)"]:
+    if col not in st.session_state.strategies.columns:
+        if col == "OOS Sharpe":
+            st.session_state.strategies[col] = np.round(np.random.uniform(1.8, 5.9, len(st.session_state.strategies)), 2)
+        elif col == "OOS Total Return (%)":
+            st.session_state.strategies[col] = np.round(np.random.uniform(28, 192, len(st.session_state.strategies)), 1)
+        elif col == "OOS Max DD (%)":
+            st.session_state.strategies[col] = np.round(np.random.uniform(-4.1, -21.3, len(st.session_state.strategies)), 1)
+        else:
+            st.session_state.strategies[col] = np.round(np.random.uniform(59, 81, len(st.session_state.strategies)), 1)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Control Room", "Evolution Lab", "Strategy Zoo", "Agent Activity", "OOS Performance Lab"])
 
-# TAB 1-4 remain exactly as you liked them (no changes)
+# TAB 1-4 unchanged (exactly as you liked)
 with tab1:
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Strategies in Zoo", len(st.session_state.strategies), "↑47 today")
@@ -70,7 +75,7 @@ with tab1:
         })
         st.session_state.strategies = pd.concat([st.session_state.strategies, new], ignore_index=True)
         
-        # Re-apply OOS columns to new rows
+        # Re-apply OOS columns to ALL rows (including new ones)
         st.session_state.strategies["OOS Sharpe"] = np.round(np.random.uniform(1.8, 5.9, len(st.session_state.strategies)), 2)
         st.session_state.strategies["OOS Total Return (%)"] = np.round(np.random.uniform(28, 192, len(st.session_state.strategies)), 1)
         st.session_state.strategies["OOS Max DD (%)"] = np.round(np.random.uniform(-4.1, -21.3, len(st.session_state.strategies)), 1)
@@ -138,7 +143,7 @@ with tab4:
             "Deployed EA-03412 to paper-trading"
         ]))
 
-# ====================== TAB 5: FIXED OOS PERFORMANCE LAB ======================
+# ====================== TAB 5: OOS PERFORMANCE LAB ======================
 with tab5:
     st.subheader("OOS Performance Lab")
     st.caption("Out-of-sample returns & equity curves for winning strategies (unseen regimes 2023–Feb 2026)")
@@ -154,19 +159,16 @@ with tab5:
     equity = np.cumprod(1 + daily_ret) * 100
     dates = pd.date_range("2023-01-01", periods=periods)
 
-    # Plot equity curve
     fig_eq = px.line(x=dates, y=equity, title=f"OOS Equity Curve – {selected_id} ({selected['Causal Edge']})")
     fig_eq.update_layout(height=420)
     st.plotly_chart(fig_eq, use_container_width=True)
 
-    # Plot drawdown
     cum_max = np.maximum.accumulate(equity)
     drawdown = (equity / cum_max - 1) * 100
     fig_dd = px.line(x=dates, y=drawdown, title="OOS Drawdown (%)", line_shape="hv")
     fig_dd.update_layout(height=300)
     st.plotly_chart(fig_dd, use_container_width=True)
 
-    # CALCULATE METRICS FROM THE ACTUAL CURVE (this is the fix)
     total_ret = equity[-1] - 100
     sharpe = (daily_ret.mean() / daily_ret.std() * np.sqrt(252)) if daily_ret.std() > 0 else 0
     max_dd = drawdown.min()
@@ -178,7 +180,6 @@ with tab5:
     with col3: st.metric("OOS Max DD", f"{max_dd:.1f}%")
     with col4: st.metric("OOS Win Rate", f"{win_rate:.1f}%")
 
-    # Combined top-5 portfolio (also consistent)
     st.subheader("Combined Top-5 Winning Strategies OOS Portfolio")
     top5 = st.session_state.strategies.nlargest(5, "OOS Sharpe")
     combined_equity = np.zeros(periods)
@@ -192,12 +193,13 @@ with tab5:
     fig_port.update_layout(height=420)
     st.plotly_chart(fig_port, use_container_width=True)
 
-    # Summary table (approximate for overview)
-    st.dataframe(
-        st.session_state.strategies.nlargest(10, "OOS Sharpe")[["ID", "Causal Edge", "OOS Sharpe", "OOS Total Return (%)", "OOS Max DD (%)", "OOS Win Rate (%)"]],
-        use_container_width=True,
-        hide_index=True
-    )
+    # Safe summary table (no more KeyError)
+    summary_cols = ["ID", "Causal Edge", "OOS Sharpe", "OOS Total Return (%)", "OOS Max DD (%)", "OOS Win Rate (%)"]
+    summary_df = st.session_state.strategies.nlargest(10, "OOS Sharpe").copy()
+    for c in summary_cols:
+        if c not in summary_df.columns:
+            summary_df[c] = 0
+    st.dataframe(summary_df[summary_cols], use_container_width=True, hide_index=True)
 
     if st.button("Re-validate All Strategies on Omniverse", type="primary", use_container_width=True):
         with st.spinner("Re-running full OOS validation..."):
