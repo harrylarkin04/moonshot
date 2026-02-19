@@ -30,17 +30,5 @@ if st.button("Scan Live Herd Fingerprint", type="primary", use_container_width=T
         - Dark-pool metadata (via secure MPC)
         - Anonymized prime-broker flow fingerprints
         
-        Model runs parallel multi-agent RL simulations of every major quant archetype to forecast tipping points.
+        Model runs parallel multi-agent RL simulations of every major quant archetype to forecast tipping points and unwind magnitudes.
         """)
-
-**Deployment instructions**  
-1. Create GitHub repository `quant-moonshot-platform-v2`  
-2. Add all files exactly as shown above  
-3. Connect to Streamlit Cloud (main file path: `app.py`)  
-4. Deploy  
-
-Login credentials:  
-**Username:** demo  
-**Password:** quant2026  
-
-Platform is ready for client and investment-committee presentations.
