@@ -25,7 +25,7 @@ if "strategies" not in st.session_state:
         "Status": np.random.choice(["Live", "Staging", "Breeding"], 20)
     })
 
-# GUARANTEED OOS COLUMNS (this fixes the KeyError)
+# Ensure OOS columns exist
 if "OOS Sharpe" not in st.session_state.strategies.columns:
     st.session_state.strategies["OOS Sharpe"] = np.round(np.random.uniform(1.8, 5.9, len(st.session_state.strategies)), 2)
     st.session_state.strategies["OOS Total Return (%)"] = np.round(np.random.uniform(28, 192, len(st.session_state.strategies)), 1)
@@ -34,7 +34,7 @@ if "OOS Sharpe" not in st.session_state.strategies.columns:
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Control Room", "Evolution Lab", "Strategy Zoo", "Agent Activity", "OOS Performance Lab"])
 
-# ====================== TAB 1: CONTROL ROOM ======================
+# TAB 1-4 remain exactly as you liked them (no changes)
 with tab1:
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Strategies in Zoo", len(st.session_state.strategies), "↑47 today")
@@ -76,7 +76,6 @@ with tab1:
         st.session_state.strategies["OOS Max DD (%)"] = np.round(np.random.uniform(-4.1, -21.3, len(st.session_state.strategies)), 1)
         st.session_state.strategies["OOS Win Rate (%)"] = np.round(np.random.uniform(59, 81, len(st.session_state.strategies)), 1)
 
-# ====================== TAB 2: EVOLUTION LAB ======================
 with tab2:
     fig_data = pd.DataFrame({
         "Generation": list(range(gens+1)),
@@ -88,7 +87,6 @@ with tab2:
                   title="Strategy Zoo Evolution Trajectory", markers=True)
     st.plotly_chart(fig, use_container_width=True)
 
-# ====================== TAB 3: STRATEGY ZOO ======================
 with tab3:
     colA, colB, colC = st.columns(3)
     with colA: min_sharpe = st.slider("Minimum Omni Sharpe", 1.0, 8.0, 2.5, 0.1)
@@ -126,7 +124,6 @@ def evo_alpha_strategy(data):
 """
         st.download_button("Download evo_alpha_strategy.py", strategy_code, "evo_alpha_strategy.py", "text/x-python")
 
-# ====================== TAB 4: AGENT ACTIVITY ======================
 with tab4:
     st.subheader("Live Multi-Agent Activity")
     st.info("Real-time feed from 4,200 autonomous agents")
@@ -141,7 +138,7 @@ with tab4:
             "Deployed EA-03412 to paper-trading"
         ]))
 
-# ====================== TAB 5: OOS PERFORMANCE LAB ======================
+# ====================== TAB 5: FIXED OOS PERFORMANCE LAB ======================
 with tab5:
     st.subheader("OOS Performance Lab")
     st.caption("Out-of-sample returns & equity curves for winning strategies (unseen regimes 2023–Feb 2026)")
@@ -149,41 +146,45 @@ with tab5:
     selected_id = st.selectbox("View OOS Performance for Strategy", st.session_state.strategies["ID"].tolist())
     selected = st.session_state.strategies[st.session_state.strategies["ID"] == selected_id].iloc[0]
 
-    # Realistic OOS equity curve
+    # Simulate equity curve
     periods = 780
     daily_mean = selected["OOS Sharpe"] / np.sqrt(252) * 0.0008
     daily_std = 0.012
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
-
     dates = pd.date_range("2023-01-01", periods=periods)
 
+    # Plot equity curve
     fig_eq = px.line(x=dates, y=equity, title=f"OOS Equity Curve – {selected_id} ({selected['Causal Edge']})")
     fig_eq.update_layout(height=420)
     st.plotly_chart(fig_eq, use_container_width=True)
 
-    # Drawdown
+    # Plot drawdown
     cum_max = np.maximum.accumulate(equity)
     drawdown = (equity / cum_max - 1) * 100
     fig_dd = px.line(x=dates, y=drawdown, title="OOS Drawdown (%)", line_shape="hv")
     fig_dd.update_layout(height=300)
     st.plotly_chart(fig_dd, use_container_width=True)
 
-    # Metrics
+    # CALCULATE METRICS FROM THE ACTUAL CURVE (this is the fix)
     total_ret = equity[-1] - 100
+    sharpe = (daily_ret.mean() / daily_ret.std() * np.sqrt(252)) if daily_ret.std() > 0 else 0
+    max_dd = drawdown.min()
+    win_rate = (daily_ret > 0).mean() * 100
+
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("OOS Total Return", f"{total_ret:.1f}%")
-    with col2: st.metric("OOS Sharpe", f"{selected['OOS Sharpe']:.2f}")
-    with col3: st.metric("OOS Max DD", f"{selected['OOS Max DD (%)']:.1f}%")
-    with col4: st.metric("OOS Win Rate", f"{selected['OOS Win Rate (%)']:.1f}%")
+    with col2: st.metric("OOS Sharpe", f"{sharpe:.2f}")
+    with col3: st.metric("OOS Max DD", f"{max_dd:.1f}%")
+    with col4: st.metric("OOS Win Rate", f"{win_rate:.1f}%")
 
-    # Combined top-5 portfolio
+    # Combined top-5 portfolio (also consistent)
     st.subheader("Combined Top-5 Winning Strategies OOS Portfolio")
     top5 = st.session_state.strategies.nlargest(5, "OOS Sharpe")
     combined_equity = np.zeros(periods)
     for _, strat in top5.iterrows():
-        daily_mean = strat["OOS Sharpe"] / np.sqrt(252) * 0.0008
-        ret = np.random.normal(daily_mean, daily_std, periods)
+        dm = strat["OOS Sharpe"] / np.sqrt(252) * 0.0008
+        ret = np.random.normal(dm, daily_std, periods)
         combined_equity += np.cumprod(1 + ret)
     combined_equity = (combined_equity / 5) * 100
 
@@ -191,7 +192,7 @@ with tab5:
     fig_port.update_layout(height=420)
     st.plotly_chart(fig_port, use_container_width=True)
 
-    # Summary table (now guaranteed to have all columns)
+    # Summary table (approximate for overview)
     st.dataframe(
         st.session_state.strategies.nlargest(10, "OOS Sharpe")[["ID", "Causal Edge", "OOS Sharpe", "OOS Total Return (%)", "OOS Max DD (%)", "OOS Win Rate (%)"]],
         use_container_width=True,
