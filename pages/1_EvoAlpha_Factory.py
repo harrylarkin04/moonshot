@@ -18,21 +18,21 @@ if "strategies" not in st.session_state:
         "ID": [f"EA-{i:05d}" for i in range(1, 21)],
         "Causal Edge": ["AI Capex Shock", "Satellite Inventory", "Dark Pool Momentum", "Options Skew Term", 
                         "Geopolitical Delta", "Credit Card Proxy", "Shipping + Earnings", "Quantum Vol Surface"] * 2 + ["Multi-Modal News"] * 4,
-        "Sharpe (Omni OOS)": np.round(np.random.uniform(2.8, 4.2, 20), 2),
+        "Sharpe (Omni OOS)": np.round(np.random.uniform(2.9, 4.3, 20), 2),
         "Capacity ($B)": np.round(np.random.uniform(0.4, 18.0, 20), 1),
         "Decay Resistance": np.random.choice(["Extreme", "Very High", "High"], 20),
         "Age (days)": np.random.randint(1, 45, 20),
         "Status": np.random.choice(["Live", "Staging", "Breeding"], 20)
     })
 
-# REALISTIC + DETERMINISTIC OOS SIMULATION
+# REALISTIC DETERMINISTIC OOS SIMULATION (finally tuned correctly)
 def compute_oos_for_strategy(row):
     seed = int(row["ID"].replace("EA-", ""))
     np.random.seed(seed)
     
     periods = 780
     daily_std = 0.0235
-    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.25   # tuned for realistic returns
+    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.18   # tuned for realistic returns
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
     drawdown = (equity / np.maximum.accumulate(equity) - 1) * 100
@@ -52,7 +52,6 @@ for idx, row in st.session_state.strategies.iterrows():
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Control Room", "Evolution Lab", "Strategy Zoo", "Agent Activity", "OOS Performance Lab"])
 
-# Tab 1 - Control Room (with balloons)
 with tab1:
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Strategies in Zoo", len(st.session_state.strategies), "↑47 today")
@@ -82,7 +81,7 @@ with tab1:
         new = pd.DataFrame({
             "ID": [f"EA-{i:05d}" for i in range(10000, 10047)],
             "Causal Edge": ["Novel " + x for x in ["Supply Chain Causality", "Sentiment Regime Switch", "Liquidity Teleport Beta", "Quantum-Inspired Carry", "Multi-Modal News Causality"] * 9 + ["Dark Pool Acceleration"] * 2],
-            "Sharpe (Omni OOS)": np.round(np.random.uniform(2.8, 4.2, 47), 2),
+            "Sharpe (Omni OOS)": np.round(np.random.uniform(2.9, 4.3, 47), 2),
             "Capacity ($B)": np.round(np.random.uniform(2.0, 25.0, 47), 1),
             "Decay Resistance": np.random.choice(["Extreme", "Very High"], 47),
             "Age (days)": 1,
@@ -96,7 +95,7 @@ with tab1:
                 for k, v in metrics.items():
                     st.session_state.strategies.loc[idx, k] = v
 
-# Tabs 2, 3, 4 remain exactly as your previous working version (no changes needed)
+# Tabs 2, 3, 4 unchanged (keep your existing code for them)
 
 with tab5:
     st.subheader("OOS Performance Lab")
@@ -109,7 +108,7 @@ with tab5:
     np.random.seed(seed)
     periods = 780
     daily_std = 0.0235
-    daily_mean = selected["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.25
+    daily_mean = selected["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.18
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
     dates = pd.date_range("2023-01-01", periods=periods)
@@ -136,7 +135,7 @@ with tab5:
     for _, strat in top5.iterrows():
         seed = int(strat["ID"].replace("EA-", ""))
         np.random.seed(seed)
-        dm = strat["Sharpe (Omni OOS)"] * 0.0235 / np.sqrt(252) * 0.25
+        dm = strat["Sharpe (Omni OOS)"] * 0.0235 / np.sqrt(252) * 0.18
         ret = np.random.normal(dm, 0.0235, periods)
         combined_equity += np.cumprod(1 + ret)
     combined_equity = (combined_equity / 5) * 100
