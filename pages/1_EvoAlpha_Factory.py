@@ -6,11 +6,12 @@ import time
 import random
 
 st.title("🧬 EvoAlpha Factory")
-st.caption("Autonomous Strategy Evolution Lab")
+st.caption("Autonomous multi-agent strategy evolution laboratory")
 
 st.sidebar.header("Evolution Controls")
-pop_size = st.sidebar.slider("Population Size", 200, 10000, 3500)
+pop_size = st.sidebar.slider("Population Size", 200, 10000, 3500, 100)
 gens = st.sidebar.slider("Generations", 5, 300, 120)
+mut_rate = st.sidebar.slider("Mutation Rate", 0.01, 0.40, 0.18, 0.01)
 
 if 'strategies' not in st.session_state:
     st.session_state.strategies = pd.DataFrame({
@@ -28,72 +29,86 @@ tab1, tab2, tab3, tab4 = st.tabs(["Control Room", "Evolution Lab", "Strategy Zoo
 
 with tab1:
     col1, col2, col3 = st.columns(3)
-    with col1: st.metric("Strategies in Zoo", len(st.session_state.strategies), "↑47")
+    with col1: st.metric("Strategies in Zoo", len(st.session_state.strategies), "↑47 today")
     with col2: st.metric("Avg Omni Sharpe", "4.12", "↑0.31")
-    with col3: st.metric("New Alphas Today", "18")
+    with col3: st.metric("New Causal Alphas", "18", "🔥")
     
     if st.button("Run Full Evolution Cycle", type="primary", use_container_width=True):
-        with st.spinner("Executing closed-loop evolution..."):
+        with st.spinner("Researcher swarm mining literature → Coder agents generating code → CausalForge validating → Omniverse stress-testing..."):
             progress = st.progress(0)
-            logs = ["Researcher swarm active...", "Coder agents generating hypotheses...", "Causal validation complete...", "Omniverse counterfactuals running...", "Selection finalized."]
+            logs = [
+                "Researcher agents scanning arXiv + SSRN + proprietary alt-data...",
+                "Inverse RL extracting fund reward functions...",
+                "Coder agents generating 3,472 new hypotheses...",
+                "CausalForge testing 12,000 interventions...",
+                "Omniverse running 2.4 million counterfactual paths...",
+                "Evolutionary selection complete. 47 winners."
+            ]
             for i, msg in enumerate(logs):
-                time.sleep(0.5)
+                time.sleep(0.55)
                 progress.progress((i+1)/len(logs))
                 st.info(msg)
         
-        st.success("47 new regime-robust strategies deployed to zoo.")
+        st.success("Evolution cycle completed. 47 new regime-robust strategies added.")
         
-        new_strats = pd.DataFrame({
+        new = pd.DataFrame({
             "ID": [f"EA-{i:05d}" for i in range(10000, 10047)],
-            "Causal Edge": ["Novel " + x for x in ["Supply Chain Causality", "Sentiment Regime Switch", "Liquidity Teleport Beta"] * 15 + ["Quantum-Inspired"] * 2],
+            "Causal Edge": ["Novel " + x for x in ["Supply Chain Causality", "Sentiment Regime Switch", "Liquidity Teleport Beta", "Quantum-Inspired Carry"] * 11 + ["Multi-Modal"] * 3],
             "Sharpe (Omni OOS)": np.round(np.random.uniform(3.1, 7.8, 47), 2),
             "Capacity ($B)": np.round(np.random.uniform(2.0, 25.0, 47), 1),
             "Decay Resistance": np.random.choice(["Extreme", "Very High"], 47),
             "Age (days)": 1,
             "Status": "Staging"
         })
-        st.session_state.strategies = pd.concat([st.session_state.strategies, new_strats], ignore_index=True)
+        st.session_state.strategies = pd.concat([st.session_state.strategies, new], ignore_index=True)
 
 with tab2:
     fig_data = pd.DataFrame({
         "Generation": list(range(gens+1)),
         "Best Sharpe": 1.8 + np.cumsum(np.random.normal(0.045, 0.008, gens+1)),
-        "Mean Sharpe": 1.4 + np.cumsum(np.random.normal(0.022, 0.006, gens+1))
+        "Mean Sharpe": 1.4 + np.cumsum(np.random.normal(0.022, 0.006, gens+1)),
+        "Population Diversity": np.linspace(0.92, 0.41, gens+1)
     })
-    fig = px.line(fig_data, x="Generation", y=["Best Sharpe", "Mean Sharpe"], markers=True)
+    fig = px.line(fig_data, x="Generation", y=["Best Sharpe", "Mean Sharpe", "Population Diversity"],
+                  title="Strategy Zoo Evolution Trajectory", markers=True)
     st.plotly_chart(fig, use_container_width=True)
 
 with tab3:
     colA, colB, colC = st.columns(3)
-    with colA: min_sharpe = st.slider("Minimum Omni Sharpe", 1.0, 8.0, 2.5)
+    with colA: min_sharpe = st.slider("Minimum Omni Sharpe", 1.0, 8.0, 2.5, 0.1)
     with colB: status_filter = st.multiselect("Status", ["Live", "Staging", "Breeding"], default=["Live", "Staging"])
+    with colC: search = st.text_input("Search Causal Edge")
     
     df = st.session_state.strategies.copy()
     df = df[df["Sharpe (Omni OOS)"] >= min_sharpe]
     if status_filter: df = df[df["Status"].isin(status_filter)]
+    if search: df = df[df["Causal Edge"].str.contains(search, case=False)]
     
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(
+        df,
+        column_config={
+            "Sharpe (Omni OOS)": st.column_config.NumberColumn(format="%.2f"),
+            "Capacity ($$   B)": st.column_config.NumberColumn(format="   $$%.1fB"),
+        },
+        use_container_width=True,
+        hide_index=True
+    )
     
-    if st.button("Export Selected Strategy to Production Python", type="primary"):
+    fig3d = px.scatter_3d(df, x="Sharpe (Omni OOS)", y="Capacity ($B)", z="Age (days)",
+                          color="Decay Resistance", hover_name="ID",
+                          title="Strategy Feature Space (3D Projection)")
+    fig3d.update_traces(marker=dict(size=8))
+    st.plotly_chart(fig3d, use_container_width=True)
+    
+    if st.button("Export Selected Strategy to Production", type="primary"):
         strategy_code = """import numpy as np
 import pandas as pd
 
 def evo_alpha_strategy(data):
-    # Causal edge: AI Capex Shock → Oil futures
+    # Auto-generated by EvoAlpha Factory v2 • Causal edge: AI Capex Shock → Oil futures
     signal = (data['AI_CAPEX'] > data['AI_CAPEX'].rolling(20).mean()) & (data['OIL_FUT'] < data['OIL_FUT'].rolling(10).mean())
     return signal.astype(int) * 2 - 1
 
-# Auto-generated by EvoAlpha Factory v2 - February 2026
+# Deploy-ready • February 2026
 """
-        st.download_button(
-            label="Download evo_alpha_strategy.py",
-            data=strategy_code,
-            file_name="evo_alpha_strategy.py",
-            mime="text/x-python"
-        )
-
-with tab4:
-    st.subheader("Live Multi-Agent Activity")
-    agents = ["Researcher-Alpha", "Coder-Genesis", "CausalForge", "Omniverse-Simulator"]
-    for _ in range(6):
-        st.markdown(f"**{random.choice(agents)}** • {time.strftime('%H:%M:%S')} → Discovered causal pathway / Ran 450k counterfactuals / Deployed strategy")
+        st.download_button("Download evo_alpha_strategy.py", strategy_code, "evo_alpha_strategy.py", "text/x-python")
