@@ -25,14 +25,14 @@ if "strategies" not in st.session_state:
         "Status": np.random.choice(["Live", "Staging", "Breeding"], 20)
     })
 
-# REALISTIC DETERMINISTIC OOS SIMULATION (finally tuned correctly)
+# Realistic + Deterministic OOS
 def compute_oos_for_strategy(row):
     seed = int(row["ID"].replace("EA-", ""))
     np.random.seed(seed)
     
     periods = 780
     daily_std = 0.0235
-    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.18   # tuned for realistic returns
+    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.18
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
     drawdown = (equity / np.maximum.accumulate(equity) - 1) * 100
@@ -44,7 +44,6 @@ def compute_oos_for_strategy(row):
         "OOS Win Rate (%)": round((daily_ret > 0).mean() * 100, 1)
     }
 
-# Apply to all strategies
 for idx, row in st.session_state.strategies.iterrows():
     metrics = compute_oos_for_strategy(row)
     for k, v in metrics.items():
@@ -95,7 +94,44 @@ with tab1:
                 for k, v in metrics.items():
                     st.session_state.strategies.loc[idx, k] = v
 
-# Tabs 2, 3, 4 unchanged (keep your existing code for them)
+with tab2:
+    fig_data = pd.DataFrame({
+        "Generation": list(range(gens+1)),
+        "Best Sharpe": 1.8 + np.cumsum(np.random.normal(0.045, 0.008, gens+1)),
+        "Mean Sharpe": 1.4 + np.cumsum(np.random.normal(0.022, 0.006, gens+1)),
+        "Population Diversity": np.linspace(0.92, 0.41, gens+1)
+    })
+    fig = px.line(fig_data, x="Generation", y=["Best Sharpe", "Mean Sharpe", "Population Diversity"], title="Strategy Zoo Evolution Trajectory", markers=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab3:
+    colA, colB, colC = st.columns(3)
+    with colA: min_sharpe = st.slider("Minimum Omni Sharpe", 1.0, 8.0, 2.5, 0.1)
+    with colB: status_filter = st.multiselect("Status", ["Live", "Staging", "Breeding"], default=["Live", "Staging"])
+    with colC: search = st.text_input("Search Causal Edge")
+    
+    df = st.session_state.strategies.copy()
+    df = df[df["Sharpe (Omni OOS)"] >= min_sharpe]
+    if status_filter: df = df[df["Status"].isin(status_filter)]
+    if search: df = df[df["Causal Edge"].str.contains(search, case=False)]
+    
+    st.dataframe(df, use_container_width=True, hide_index=True)
+    
+    fig3d = px.scatter_3d(df, x="Sharpe (Omni OOS)", y="Capacity ($B)", z="Age (days)", color="Decay Resistance", hover_name="ID", title="Strategy Feature Space (3D Projection)")
+    fig3d.update_traces(marker=dict(size=8))
+    st.plotly_chart(fig3d, use_container_width=True)
+    
+    if st.button("Export Selected Strategy to Production", type="primary", use_container_width=True):
+        strategy_code = """import numpy as np\nimport pandas as pd\n\ndef evo_alpha_strategy(data):\n    signal = (data['AI_CAPEX'] > data['AI_CAPEX'].rolling(20).mean()) & (data['OIL_FUT'] < data['OIL_FUT'].rolling(10).mean())\n    return signal.astype(int) * 2 - 1"""
+        st.download_button("Download evo_alpha_strategy.py", strategy_code, "evo_alpha_strategy.py", "text/x-python")
+
+with tab4:
+    st.subheader("Live Multi-Agent Activity")
+    st.info("Real-time feed from 4,200 autonomous agents")
+    agents = ["Researcher-Alpha", "Coder-Genesis", "CausalForge-Validator", "Omniverse-Simulator", "Evo-Selector"]
+    for _ in range(8):
+        agent = random.choice(agents)
+        st.markdown(f"**{agent}** • {time.strftime('%H:%M:%S')} → " + random.choice(["Discovered new causal pathway in satellite + options data", "Mutated 312 strategies with quantum annealing", "Rejected 1,842 spurious correlations", "Ran 450,000 Omniverse counterfactuals", "Deployed EA-03412 to paper-trading"]))
 
 with tab5:
     st.subheader("OOS Performance Lab")
