@@ -25,7 +25,7 @@ if "strategies" not in st.session_state:
         "Status": np.random.choice(["Live", "Staging", "Breeding"], 20)
     })
 
-# Realistic + Deterministic OOS
+# Realistic deterministic OOS
 def compute_oos_for_strategy(row):
     seed = int(row["ID"].replace("EA-", ""))
     np.random.seed(seed)
