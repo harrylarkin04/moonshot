@@ -46,27 +46,4 @@ with tab1:
                 "Evolutionary selection complete. 47 winners."
             ]
             for i, msg in enumerate(logs):
-                time.sleep(0.55)
-                progress.progress((i+1)/len(logs))
-                st.info(msg)
-        
-        st.success("Evolution cycle completed. 47 new regime-robust strategies added.")
-        
-        new = pd.DataFrame({
-            "ID": [f"EA-{i:05d}" for i in range(10000, 10047)],
-            "Causal Edge": ["Novel " + x for x in ["Supply Chain Causality", "Sentiment Regime Switch", "Liquidity Teleport Beta", "Quantum-Inspired Carry", "Multi-Modal News Causality"] * 9 + ["Dark Pool Acceleration"] * 2],
-            "Sharpe (Omni OOS)": np.round(np.random.uniform(3.1, 7.8, 47), 2),
-            "Capacity ($B)": np.round(np.random.uniform(2.0, 25.0, 47), 1),
-            "Decay Resistance": np.random.choice(["Extreme", "Very High"], 47),
-            "Age (days)": 1,
-            "Status": "Staging"
-        })
-        st.session_state.strategies = pd.concat([st.session_state.strategies, new], ignore_index=True)
-
-# ====================== TAB 2: EVOLUTION LAB ======================
-with tab2:
-    fig_data = pd.DataFrame({
-        "Generation": list(range(gens+1)),
-        "Best Sharpe": 1.8 + np.cumsum(np.random.normal(0.045, 0.008, gens+1)),
-        "Mean Sharpe": 1.4 + np.cumsum(np.random.normal(0.022, 0.006, gens+1)),
-        "Population Diversity": np.linspace
+                time.sleep(0.55
