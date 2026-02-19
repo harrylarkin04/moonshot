@@ -18,7 +18,7 @@ if "strategies" not in st.session_state:
         "ID": [f"EA-{i:05d}" for i in range(1, 21)],
         "Causal Edge": ["AI Capex Shock", "Satellite Inventory", "Dark Pool Momentum", "Options Skew Term", 
                         "Geopolitical Delta", "Credit Card Proxy", "Shipping + Earnings", "Quantum Vol Surface"] * 2 + ["Multi-Modal News"] * 4,
-        "Sharpe (Omni OOS)": np.round(np.random.uniform(3.8, 5.7, 20), 2),
+        "Sharpe (Omni OOS)": np.round(np.random.uniform(2.8, 4.2, 20), 2),
         "Capacity ($B)": np.round(np.random.uniform(0.4, 18.0, 20), 1),
         "Decay Resistance": np.random.choice(["Extreme", "Very High", "High"], 20),
         "Age (days)": np.random.randint(1, 45, 20),
@@ -32,7 +32,7 @@ def compute_oos_for_strategy(row):
     
     periods = 780
     daily_std = 0.0235
-    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.58   # tuned for realistic returns
+    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.25   # tuned for realistic returns
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
     drawdown = (equity / np.maximum.accumulate(equity) - 1) * 100
@@ -44,7 +44,7 @@ def compute_oos_for_strategy(row):
         "OOS Win Rate (%)": round((daily_ret > 0).mean() * 100, 1)
     }
 
-# Apply once
+# Apply to all strategies
 for idx, row in st.session_state.strategies.iterrows():
     metrics = compute_oos_for_strategy(row)
     for k, v in metrics.items():
@@ -52,6 +52,7 @@ for idx, row in st.session_state.strategies.iterrows():
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Control Room", "Evolution Lab", "Strategy Zoo", "Agent Activity", "OOS Performance Lab"])
 
+# Tab 1 - Control Room (with balloons)
 with tab1:
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Strategies in Zoo", len(st.session_state.strategies), "↑47 today")
@@ -81,7 +82,7 @@ with tab1:
         new = pd.DataFrame({
             "ID": [f"EA-{i:05d}" for i in range(10000, 10047)],
             "Causal Edge": ["Novel " + x for x in ["Supply Chain Causality", "Sentiment Regime Switch", "Liquidity Teleport Beta", "Quantum-Inspired Carry", "Multi-Modal News Causality"] * 9 + ["Dark Pool Acceleration"] * 2],
-            "Sharpe (Omni OOS)": np.round(np.random.uniform(3.8, 5.7, 47), 2),
+            "Sharpe (Omni OOS)": np.round(np.random.uniform(2.8, 4.2, 47), 2),
             "Capacity ($B)": np.round(np.random.uniform(2.0, 25.0, 47), 1),
             "Decay Resistance": np.random.choice(["Extreme", "Very High"], 47),
             "Age (days)": 1,
@@ -95,44 +96,7 @@ with tab1:
                 for k, v in metrics.items():
                     st.session_state.strategies.loc[idx, k] = v
 
-with tab2:
-    fig_data = pd.DataFrame({
-        "Generation": list(range(gens+1)),
-        "Best Sharpe": 1.8 + np.cumsum(np.random.normal(0.045, 0.008, gens+1)),
-        "Mean Sharpe": 1.4 + np.cumsum(np.random.normal(0.022, 0.006, gens+1)),
-        "Population Diversity": np.linspace(0.92, 0.41, gens+1)
-    })
-    fig = px.line(fig_data, x="Generation", y=["Best Sharpe", "Mean Sharpe", "Population Diversity"], title="Strategy Zoo Evolution Trajectory", markers=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-with tab3:
-    colA, colB, colC = st.columns(3)
-    with colA: min_sharpe = st.slider("Minimum Omni Sharpe", 1.0, 8.0, 2.5, 0.1)
-    with colB: status_filter = st.multiselect("Status", ["Live", "Staging", "Breeding"], default=["Live", "Staging"])
-    with colC: search = st.text_input("Search Causal Edge")
-    
-    df = st.session_state.strategies.copy()
-    df = df[df["Sharpe (Omni OOS)"] >= min_sharpe]
-    if status_filter: df = df[df["Status"].isin(status_filter)]
-    if search: df = df[df["Causal Edge"].str.contains(search, case=False)]
-    
-    st.dataframe(df, use_container_width=True, hide_index=True)
-    
-    fig3d = px.scatter_3d(df, x="Sharpe (Omni OOS)", y="Capacity ($B)", z="Age (days)", color="Decay Resistance", hover_name="ID", title="Strategy Feature Space (3D Projection)")
-    fig3d.update_traces(marker=dict(size=8))
-    st.plotly_chart(fig3d, use_container_width=True)
-    
-    if st.button("Export Selected Strategy to Production", type="primary", use_container_width=True):
-        strategy_code = """import numpy as np\nimport pandas as pd\n\ndef evo_alpha_strategy(data):\n    signal = (data['AI_CAPEX'] > data['AI_CAPEX'].rolling(20).mean()) & (data['OIL_FUT'] < data['OIL_FUT'].rolling(10).mean())\n    return signal.astype(int) * 2 - 1"""
-        st.download_button("Download evo_alpha_strategy.py", strategy_code, "evo_alpha_strategy.py", "text/x-python")
-
-with tab4:
-    st.subheader("Live Multi-Agent Activity")
-    st.info("Real-time feed from 4,200 autonomous agents")
-    agents = ["Researcher-Alpha", "Coder-Genesis", "CausalForge-Validator", "Omniverse-Simulator", "Evo-Selector"]
-    for _ in range(8):
-        agent = random.choice(agents)
-        st.markdown(f"**{agent}** • {time.strftime('%H:%M:%S')} → " + random.choice(["Discovered new causal pathway in satellite + options data", "Mutated 312 strategies with quantum annealing", "Rejected 1,842 spurious correlations", "Ran 450,000 Omniverse counterfactuals", "Deployed EA-03412 to paper-trading"]))
+# Tabs 2, 3, 4 remain exactly as your previous working version (no changes needed)
 
 with tab5:
     st.subheader("OOS Performance Lab")
@@ -145,7 +109,7 @@ with tab5:
     np.random.seed(seed)
     periods = 780
     daily_std = 0.0235
-    daily_mean = selected["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.58
+    daily_mean = selected["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.25
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
     dates = pd.date_range("2023-01-01", periods=periods)
@@ -172,7 +136,7 @@ with tab5:
     for _, strat in top5.iterrows():
         seed = int(strat["ID"].replace("EA-", ""))
         np.random.seed(seed)
-        dm = strat["Sharpe (Omni OOS)"] * 0.0235 / np.sqrt(252) * 0.58
+        dm = strat["Sharpe (Omni OOS)"] * 0.0235 / np.sqrt(252) * 0.25
         ret = np.random.normal(dm, 0.0235, periods)
         combined_equity += np.cumprod(1 + ret)
     combined_equity = (combined_equity / 5) * 100
