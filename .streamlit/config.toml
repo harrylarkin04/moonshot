@@ -1,3 +1,6 @@
+
+### .streamlit/config.toml
+```toml
 [theme]
 primaryColor = "#00ff9d"
 backgroundColor = "#0a0a0a"
