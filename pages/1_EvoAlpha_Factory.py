@@ -18,21 +18,21 @@ if "strategies" not in st.session_state:
         "ID": [f"EA-{i:05d}" for i in range(1, 21)],
         "Causal Edge": ["AI Capex Shock", "Satellite Inventory", "Dark Pool Momentum", "Options Skew Term", 
                         "Geopolitical Delta", "Credit Card Proxy", "Shipping + Earnings", "Quantum Vol Surface"] * 2 + ["Multi-Modal News"] * 4,
-        "Sharpe (Omni OOS)": np.round(np.random.uniform(3.6, 5.9, 20), 2),
+        "Sharpe (Omni OOS)": np.round(np.random.uniform(3.8, 5.7, 20), 2),
         "Capacity ($B)": np.round(np.random.uniform(0.4, 18.0, 20), 1),
         "Decay Resistance": np.random.choice(["Extreme", "Very High", "High"], 20),
         "Age (days)": np.random.randint(1, 45, 20),
         "Status": np.random.choice(["Live", "Staging", "Breeding"], 20)
     })
 
-# DETERMINISTIC + REALISTIC OOS SIMULATION
+# REALISTIC + DETERMINISTIC OOS SIMULATION
 def compute_oos_for_strategy(row):
     seed = int(row["ID"].replace("EA-", ""))
     np.random.seed(seed)
     
     periods = 780
-    daily_std = 0.0218
-    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.82   # tuned for realistic returns
+    daily_std = 0.0235
+    daily_mean = row["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.58   # tuned for realistic returns
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
     drawdown = (equity / np.maximum.accumulate(equity) - 1) * 100
@@ -44,7 +44,7 @@ def compute_oos_for_strategy(row):
         "OOS Win Rate (%)": round((daily_ret > 0).mean() * 100, 1)
     }
 
-# Apply to all strategies
+# Apply once
 for idx, row in st.session_state.strategies.iterrows():
     metrics = compute_oos_for_strategy(row)
     for k, v in metrics.items():
@@ -81,7 +81,7 @@ with tab1:
         new = pd.DataFrame({
             "ID": [f"EA-{i:05d}" for i in range(10000, 10047)],
             "Causal Edge": ["Novel " + x for x in ["Supply Chain Causality", "Sentiment Regime Switch", "Liquidity Teleport Beta", "Quantum-Inspired Carry", "Multi-Modal News Causality"] * 9 + ["Dark Pool Acceleration"] * 2],
-            "Sharpe (Omni OOS)": np.round(np.random.uniform(3.6, 5.9, 47), 2),
+            "Sharpe (Omni OOS)": np.round(np.random.uniform(3.8, 5.7, 47), 2),
             "Capacity ($B)": np.round(np.random.uniform(2.0, 25.0, 47), 1),
             "Decay Resistance": np.random.choice(["Extreme", "Very High"], 47),
             "Age (days)": 1,
@@ -144,19 +144,19 @@ with tab5:
     seed = int(selected_id.replace("EA-", ""))
     np.random.seed(seed)
     periods = 780
-    daily_std = 0.0218
-    daily_mean = selected["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.82
+    daily_std = 0.0235
+    daily_mean = selected["Sharpe (Omni OOS)"] * daily_std / np.sqrt(252) * 0.58
     daily_ret = np.random.normal(daily_mean, daily_std, periods)
     equity = np.cumprod(1 + daily_ret) * 100
     dates = pd.date_range("2023-01-01", periods=periods)
 
-    fig_eq = px.line(x=dates, y=equity, title=f"OOS Equity Curve – {selected_id} ({selected['Causal Edge']})", labels={"x": "Date", "y": "Equity Index"})
+    fig_eq = px.line(x=dates, y=equity, title=f"OOS Equity Curve – {selected_id} ({selected['Causal Edge']})", labels={"x": "", "y": "Equity Index"})
     fig_eq.update_layout(height=420)
     st.plotly_chart(fig_eq, use_container_width=True)
 
     cum_max = np.maximum.accumulate(equity)
     drawdown = (equity / cum_max - 1) * 100
-    fig_dd = px.line(x=dates, y=drawdown, title="OOS Drawdown (%)", labels={"x": "Date", "y": "Drawdown %"}, line_shape="hv")
+    fig_dd = px.line(x=dates, y=drawdown, title="OOS Drawdown (%)", labels={"x": "", "y": "Drawdown %"}, line_shape="hv")
     fig_dd.update_layout(height=300)
     st.plotly_chart(fig_dd, use_container_width=True)
 
@@ -172,12 +172,12 @@ with tab5:
     for _, strat in top5.iterrows():
         seed = int(strat["ID"].replace("EA-", ""))
         np.random.seed(seed)
-        dm = strat["Sharpe (Omni OOS)"] * 0.0218 / np.sqrt(252) * 0.82
-        ret = np.random.normal(dm, 0.0218, periods)
+        dm = strat["Sharpe (Omni OOS)"] * 0.0235 / np.sqrt(252) * 0.58
+        ret = np.random.normal(dm, 0.0235, periods)
         combined_equity += np.cumprod(1 + ret)
     combined_equity = (combined_equity / 5) * 100
 
-    fig_port = px.line(x=dates, y=combined_equity, title="Top-5 Portfolio OOS Equity Curve", labels={"x": "Date", "y": "Equity Index"})
+    fig_port = px.line(x=dates, y=combined_equity, title="Top-5 Portfolio OOS Equity Curve", labels={"x": "", "y": "Equity Index"})
     fig_port.update_layout(height=420)
     st.plotly_chart(fig_port, use_container_width=True)
 
